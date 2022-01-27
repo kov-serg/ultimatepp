@@ -83,6 +83,9 @@ LRESULT Ctrl::WindowProc(UINT message, WPARAM wParam, LPARAM lParam) {
 		::ClientToScreen(hwnd, CurrentMousePos);
 		return p;
 	};
+	
+	Rect preedit_pos = GetPreeditPos();
+	bool has_preedit = !IsNull(preedit_pos);
 
 	switch(message) {
 	case WM_POINTERDOWN:
@@ -409,6 +412,55 @@ LRESULT Ctrl::WindowProc(UINT message, WPARAM wParam, LPARAM lParam) {
 		break;
 //	case WM_GETDLGCODE:
 //		return wantfocus ? 0 : DLGC_STATIC;
+	case WM_IME_COMPOSITION:
+        DLOG("IMECOMPOSITION");
+		if(has_preedit) {
+			HIMC himc = ImmGetContext(GetHWND());
+			if(!himc)
+				break;
+			CANDIDATEFORM cf;
+			cf.dwIndex = 0;
+			cf.dwStyle = CFS_CANDIDATEPOS;
+			cf.ptCurrentPos.x = preedit_pos.left;
+			cf.ptCurrentPos.y = preedit_pos.bottom;
+			ImmSetCandidateWindow(himc, &cf);
+			auto ReadString = [&](int type) -> WString {
+				int len = ImmGetCompositionStringW (himc, type, NULL, 0);
+				if(len > 0) {
+					Buffer<char16> sw(len / 2);
+					ImmGetCompositionStringW(himc, type, sw, len);
+					return ToUtf32(sw, len / 2);
+				}
+				return Null;
+			};
+			if(lParam & GCS_COMPSTR) {
+				DLOG("COMPSTR");
+				ShowPreedit(ReadString(GCS_COMPSTR));
+			}
+			if(lParam & GCS_RESULTSTR) {
+				DLOG("RESULTSTR");
+				WString h = ReadString(GCS_RESULTSTR);
+				for(wchar c : h)
+					DispatchKey(c, 1);
+				HidePreedit();
+				SyncCaret();
+			}
+			ImmReleaseContext(GetHWND(), himc);
+			return 0L;
+		}
+		break;
+    case WM_IME_STARTCOMPOSITION:
+        DLOG("STARTCOMPOSITION");
+        if(has_preedit)
+            return 0L;
+        break;
+	case WM_IME_ENDCOMPOSITION:
+        DLOG("ENDCOMPOSITION");
+		if(has_preedit) {
+			HidePreedit();
+			return 0L;
+		}
+		break;
 	case WM_XBUTTONDOWN: {
 		UINT button = GET_XBUTTON_WPARAM(wParam);
 		if(button == XBUTTON2)
