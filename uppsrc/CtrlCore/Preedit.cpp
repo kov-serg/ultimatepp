@@ -4,22 +4,52 @@
 
 namespace Upp {
 
-Rect Ctrl::GetPreeditPos()
-{
+struct PreeditCtrl : Ctrl {
+	WString text;
+	Font    font;
+	Ctrl   *owner = NULL;
+
+	virtual void Paint(Draw& w) {
+		Size sz = GetSize();
+		DDUMP(font);
+		w.DrawRect(GetSize(), SWhite());
+		w.DrawText(DPI(2), sz.cy - font.GetCy(), text, font, SBlack());
+	}
+	
+	PreeditCtrl() { SetFrame(BlackFrame()); }
+};
+
+Rect Ctrl::GetPreeditScreenRect()
+{ // preedit position relative to window rect (client area in win32), zero width
 	if(HasFocusDeep()) {
-		Rect r = focusCtrl->GetPreedit();
-		if(r.GetHeight() > 0) {
-			r.Offset(focusCtrl->GetScreenView().TopLeft() - GetScreenRect().TopLeft());
-			return r;
+		Point p = focusCtrl->GetPreedit();
+		DDUMP(focusCtrl->GetPreeditFont());
+		DDUMP(focusCtrl->GetPreeditFont().GetCy());
+		if(!IsNull(p)) {
+			p += focusCtrl->GetScreenView().TopLeft();
+			return RectC(p.x, p.y - 1, 0, focusCtrl->GetPreeditFont().GetCy() + 1);
 		}
 	}
 	return Null;
 }
 
-Font GetPreeditFont(int height)
+Point Ctrl::GetPreedit()
+{
+	if(HasFocus()) {
+		Rect r = GetCaret();
+		if(r.GetHeight() > 0)
+			return r.TopRight();
+	}
+	return Null;
+}
+
+Font Ctrl::GetPreeditFont()
 {
 	static int pheight = -1;
 	static Font pfont;
+	if(!focusCtrl)
+		return StdFont();
+	int height = max(focusCtrl->GetCaret().GetHeight(), DPI(7));
 	if(height != pheight) {
 		pheight = height;
 		while(pheight > 0) {
@@ -34,41 +64,34 @@ Font GetPreeditFont(int height)
 	return pfont;
 }
 
-struct PreeditCtrl : Ctrl {
-	WString text;
-	Font    font;
-
-	virtual void Paint(Draw& w) {
-		Size sz = GetSize();
-		w.DrawRect(GetSize(), SWhite());
-		w.DrawText(DPI(2), sz.cy - font.GetCy(), text, font, SBlack());
+void Ctrl::SyncPreedit()
+{
+	PreeditCtrl& p = Single<PreeditCtrl>();
+	if(p.owner == this && focusCtrl) {
+		Rect r = GetPreeditScreenRect();
+		p.font = focusCtrl->GetPreeditFont();
+		r.right = r.left + GetTextSize(p.text, p.font).cx + DPI(4);
+		p.SetRect(r);
 	}
-	
-	PreeditCtrl() { SetFrame(BlackFrame()); }
-};
+}
 
 void Ctrl::ShowPreedit(const WString& text)
 {
-	Rect r = GetPreeditPos();
 	PreeditCtrl& p = Single<PreeditCtrl>();
 	p.text = text;
-	p.font = GetPreeditFont(r.GetHeight());
-	r.Offset(GetScreenRect().TopLeft());
-	r.right = r.left + GetTextSize(text, p.font).cx + DPI(4);
-	r.bottom = r.top + p.font.GetCy();
-	p.SetRect(r);
-	if(!p.IsOpen()) {
-		LLOG("Open preedit " << r);
+	p.owner = this;
+	SyncPreedit();
+	if(!p.IsOpen())
 		p.PopUp(this, true, false, true);
-	}
+	p.Refresh();
 }
 
 void Ctrl::HidePreedit()
 {
 	PreeditCtrl& p = Single<PreeditCtrl>();
 	if(p.IsOpen()) {
-		LLOG("Close preedit");
 		p.Close();
+		p.owner = NULL;
 	}
 }
 

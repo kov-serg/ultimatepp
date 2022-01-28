@@ -76,13 +76,6 @@ void Ctrl::Pen(Point p, const PenInfo& pen, dword keyflags) {}
 
 void Ctrl::Layout()                                 {}
 
-Rect Ctrl::GetPreedit()
-{
-	Rect r = GetCaret();
-	r.left = r.right;
-	return r.GetHeight() > 0 ? r : Null;
-}
-
 void Ctrl::PostInput()
 {
 	GuiLock __;

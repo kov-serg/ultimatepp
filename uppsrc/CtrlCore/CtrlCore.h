@@ -642,7 +642,8 @@ private:
 	void    SetInfoPart(int i, const char *txt);
 	String  GetInfoPart(int i) const;
 
-	Rect    GetPreeditPos();
+	Rect    GetPreeditScreenRect();
+	void    SyncPreedit();
 	void    ShowPreedit(const WString& text);
 	void    HidePreedit();
 
@@ -880,7 +881,8 @@ public:
 	
 	virtual void   Pen(Point p, const PenInfo& pen, dword keyflags);
 	
-	virtual Rect   GetPreedit();
+	virtual Point  GetPreedit();
+	virtual Font   GetPreeditFont();
 
 	virtual void   DragAndDrop(Point p, PasteClip& d);
 	virtual void   FrameDragAndDrop(Point p, PasteClip& d);

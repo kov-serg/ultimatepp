@@ -84,8 +84,21 @@ LRESULT Ctrl::WindowProc(UINT message, WPARAM wParam, LPARAM lParam) {
 		return p;
 	};
 	
-	Rect preedit_pos = GetPreeditPos();
-	bool has_preedit = !IsNull(preedit_pos);
+	bool has_preedit = HasFocusDeep() && focusCtrl && !IsNull(focusCtrl->GetPreedit());
+
+	auto StopPreedit = [&] {
+		HidePreedit();
+		HIMC himc = ImmGetContext (hwnd);
+		if(himc && ImmGetOpenStatus(himc)) {
+			ImmNotifyIME(himc, NI_COMPOSITIONSTR, CPS_CANCEL, 0);
+			ImmReleaseContext (hwnd, himc);
+		}
+	};
+	
+	auto ClickActivate = [&] {
+		ClickActivateWnd();
+		StopPreedit();
+	};
 
 	switch(message) {
 	case WM_POINTERDOWN:
@@ -177,7 +190,7 @@ LRESULT Ctrl::WindowProc(UINT message, WPARAM wParam, LPARAM lParam) {
 				case WM_POINTERDOWN:
 					pendown=true;
 					pen.action = PEN_DOWN;
-					ClickActivateWnd();
+					ClickActivate();
 					break;
 				case WM_POINTERUP:
 					pendown=false;
@@ -238,7 +251,7 @@ LRESULT Ctrl::WindowProc(UINT message, WPARAM wParam, LPARAM lParam) {
 		if(ignoremouse) return HTTRANSPARENT;
 		break;
 	case WM_LBUTTONDOWN:
-		ClickActivateWnd();
+		ClickActivate();
 		if(ignoreclick) return 0L;
 		DoMouse(LEFTDOWN, MousePos(), 0);
 		if(_this) PostInput();
@@ -251,13 +264,13 @@ LRESULT Ctrl::WindowProc(UINT message, WPARAM wParam, LPARAM lParam) {
 		if(_this) PostInput();
 		return 0L;
 	case WM_LBUTTONDBLCLK:
-		ClickActivateWnd();
+		ClickActivate();
 		if(ignoreclick) return 0L;
 		DoMouse(LEFTDOUBLE, MousePos(), 0);
 		if(_this) PostInput();
 		return 0L;
 	case WM_RBUTTONDOWN:
-		ClickActivateWnd();
+		ClickActivate();
 		if(ignoreclick) return 0L;
 		DoMouse(RIGHTDOWN, MousePos());
 		if(_this) PostInput();
@@ -270,13 +283,13 @@ LRESULT Ctrl::WindowProc(UINT message, WPARAM wParam, LPARAM lParam) {
 		if(_this) PostInput();
 		return 0L;
 	case WM_RBUTTONDBLCLK:
-		ClickActivateWnd();
+		ClickActivate();
 		if(ignoreclick) return 0L;
 		DoMouse(RIGHTDOUBLE, MousePos());
 		if(_this) PostInput();
 		return 0L;
 	case WM_MBUTTONDOWN:
-		ClickActivateWnd();
+		ClickActivate();
 		if(ignoreclick) return 0L;
 		DoMouse(MIDDLEDOWN, MousePos());
 		if(_this) PostInput();
@@ -289,7 +302,7 @@ LRESULT Ctrl::WindowProc(UINT message, WPARAM wParam, LPARAM lParam) {
 		if(_this) PostInput();
 		return 0L;
 	case WM_MBUTTONDBLCLK:
-		ClickActivateWnd();
+		ClickActivate();
 		if(ignoreclick) return 0L;
 		DoMouse(MIDDLEDOUBLE, MousePos());
 		if(_this) PostInput();
@@ -297,7 +310,7 @@ LRESULT Ctrl::WindowProc(UINT message, WPARAM wParam, LPARAM lParam) {
 	case WM_NCLBUTTONDOWN:
 	case WM_NCRBUTTONDOWN:
 	case WM_NCMBUTTONDOWN:
-		ClickActivateWnd();
+		ClickActivate();
 		IgnoreMouseUp();
 		break;
 	case WM_MOUSEMOVE:
@@ -418,11 +431,15 @@ LRESULT Ctrl::WindowProc(UINT message, WPARAM wParam, LPARAM lParam) {
 			HIMC himc = ImmGetContext(GetHWND());
 			if(!himc)
 				break;
+			DDUMP(GetPreeditScreenRect());
+			RECT wr;
+			GetWindowRect(hwnd, &wr);
+			Point p = GetPreeditScreenRect().BottomLeft() - Rect(wr).TopLeft();
 			CANDIDATEFORM cf;
 			cf.dwIndex = 0;
 			cf.dwStyle = CFS_CANDIDATEPOS;
-			cf.ptCurrentPos.x = preedit_pos.left;
-			cf.ptCurrentPos.y = preedit_pos.bottom;
+			cf.ptCurrentPos.x = p.x;
+			cf.ptCurrentPos.y = p.y;
 			ImmSetCandidateWindow(himc, &cf);
 			auto ReadString = [&](int type) -> WString {
 				int len = ImmGetCompositionStringW (himc, type, NULL, 0);
@@ -515,7 +532,8 @@ LRESULT Ctrl::WindowProc(UINT message, WPARAM wParam, LPARAM lParam) {
 		if(!IsEnabled()) {
 			if(lastActiveWnd && lastActiveWnd->IsEnabled()) {
 				if(focusCtrl) { // this closes popup
-					LLOG("WM_MOUSEACTIVATE -> ClickActivateWnd for " << UPP::Name(lastActiveWnd));
+					LLOG("WM_MOUSEACTIVATE -> ClickActivate for " << UPP::Name(lastActiveWnd));
+					StopPreedit();
 					lastActiveWnd->ClickActivateWnd();
 				}
 				else { // this makes child dialog active when clicked on disabled parent
@@ -549,6 +567,7 @@ LRESULT Ctrl::WindowProc(UINT message, WPARAM wParam, LPARAM lParam) {
 			caretCtrl = NULL;
 			SyncCaret();
 		#endif
+			SyncPreedit();
 		}
 		return 0L;
 	case WM_HELP:
@@ -593,6 +612,7 @@ LRESULT Ctrl::WindowProc(UINT message, WPARAM wParam, LPARAM lParam) {
 			KillFocusWnd();
 		}
 		LLOG("//WM_KILLFOCUS " << (void *)(HWND)wParam << ", focusCtrlWnd = " << UPP::Name(focusCtrlWnd) << ", raw = " << (void *)::GetFocus());
+		StopPreedit();
 		return 0L;
 	case WM_ENABLE:
 		if(!!wParam != enabled) {
