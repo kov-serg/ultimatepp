@@ -8,12 +8,14 @@ struct PreeditCtrl : Ctrl {
 	WString text;
 	Font    font;
 	Ctrl   *owner = NULL;
+	int     cursor = INT_MAX;
 
 	virtual void Paint(Draw& w) {
 		Size sz = GetSize();
-		DDUMP(font);
 		w.DrawRect(GetSize(), SWhite());
 		w.DrawText(DPI(2), sz.cy - font.GetCy(), text, font, SBlack());
+		if(cursor < text.GetCount())
+			w.DrawRect(DPI(2) + GetTextSize(text.Mid(0, cursor), font).cx, 0, DPI(1), sz.cy, InvertColor);
 	}
 	
 	PreeditCtrl() { SetFrame(BlackFrame()); }
@@ -23,8 +25,6 @@ Rect Ctrl::GetPreeditScreenRect()
 { // preedit position relative to window rect (client area in win32), zero width
 	if(HasFocusDeep()) {
 		Point p = focusCtrl->GetPreedit();
-		DDUMP(focusCtrl->GetPreeditFont());
-		DDUMP(focusCtrl->GetPreeditFont().GetCy());
 		if(!IsNull(p)) {
 			p += focusCtrl->GetScreenView().TopLeft();
 			return RectC(p.x, p.y - 1, 0, focusCtrl->GetPreeditFont().GetCy() + 1);
@@ -75,10 +75,11 @@ void Ctrl::SyncPreedit()
 	}
 }
 
-void Ctrl::ShowPreedit(const WString& text)
+void Ctrl::ShowPreedit(const WString& text, int cursor)
 {
 	PreeditCtrl& p = Single<PreeditCtrl>();
 	p.text = text;
+	p.cursor = cursor;
 	p.owner = this;
 	SyncPreedit();
 	if(!p.IsOpen())

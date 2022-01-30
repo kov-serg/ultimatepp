@@ -426,12 +426,10 @@ LRESULT Ctrl::WindowProc(UINT message, WPARAM wParam, LPARAM lParam) {
 //	case WM_GETDLGCODE:
 //		return wantfocus ? 0 : DLGC_STATIC;
 	case WM_IME_COMPOSITION:
-        DLOG("IMECOMPOSITION");
 		if(has_preedit) {
 			HIMC himc = ImmGetContext(GetHWND());
 			if(!himc)
 				break;
-			DDUMP(GetPreeditScreenRect());
 			RECT wr;
 			GetWindowRect(hwnd, &wr);
 			Point p = GetPreeditScreenRect().BottomLeft() - Rect(wr).TopLeft();
@@ -440,7 +438,7 @@ LRESULT Ctrl::WindowProc(UINT message, WPARAM wParam, LPARAM lParam) {
 			cf.dwStyle = CFS_CANDIDATEPOS;
 			cf.ptCurrentPos.x = p.x;
 			cf.ptCurrentPos.y = p.y;
-			ImmSetCandidateWindow(himc, &cf);
+			ImmSetCandidateWindow(himc, &cf); // todo: SetCaretPos too
 			auto ReadString = [&](int type) -> WString {
 				int len = ImmGetCompositionStringW (himc, type, NULL, 0);
 				if(len > 0) {
@@ -451,11 +449,9 @@ LRESULT Ctrl::WindowProc(UINT message, WPARAM wParam, LPARAM lParam) {
 				return Null;
 			};
 			if(lParam & GCS_COMPSTR) {
-				DLOG("COMPSTR");
-				ShowPreedit(ReadString(GCS_COMPSTR));
+				ShowPreedit(ReadString(GCS_COMPSTR), ImmGetCompositionString(himc, GCS_CURSORPOS, 0, 0));
 			}
 			if(lParam & GCS_RESULTSTR) {
-				DLOG("RESULTSTR");
 				WString h = ReadString(GCS_RESULTSTR);
 				for(wchar c : h)
 					DispatchKey(c, 1);
@@ -467,12 +463,10 @@ LRESULT Ctrl::WindowProc(UINT message, WPARAM wParam, LPARAM lParam) {
 		}
 		break;
     case WM_IME_STARTCOMPOSITION:
-        DLOG("STARTCOMPOSITION");
         if(has_preedit)
             return 0L;
         break;
 	case WM_IME_ENDCOMPOSITION:
-        DLOG("ENDCOMPOSITION");
 		if(has_preedit) {
 			HidePreedit();
 			return 0L;

@@ -644,7 +644,7 @@ private:
 
 	Rect    GetPreeditScreenRect();
 	void    SyncPreedit();
-	void    ShowPreedit(const WString& text);
+	void    ShowPreedit(const WString& text, int cursor = INT_MAX);
 	void    HidePreedit();
 
 // System window interface...
