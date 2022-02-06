@@ -432,13 +432,24 @@ LRESULT Ctrl::WindowProc(UINT message, WPARAM wParam, LPARAM lParam) {
 				break;
 			RECT wr;
 			GetWindowRect(hwnd, &wr);
-			Point p = GetPreeditScreenRect().BottomLeft() - Rect(wr).TopLeft();
+			Rect pr = GetPreeditScreenRect();
+			Point p = pr.TopLeft() - /*Rect(wr)*/GetScreenRect().TopLeft();
 			CANDIDATEFORM cf;
 			cf.dwIndex = 0;
-			cf.dwStyle = CFS_CANDIDATEPOS;
+			cf.dwStyle = CFS_EXCLUDE;
 			cf.ptCurrentPos.x = p.x;
 			cf.ptCurrentPos.y = p.y;
-			ImmSetCandidateWindow(himc, &cf); // todo: SetCaretPos too
+			cf.rcArea.left    = p.x;
+			cf.rcArea.top     = p.y;
+			cf.rcArea.right   = p.x + DPI(20); // DPI(20) is sort of hack, but candidate windows are above or bellow anyway...
+			cf.rcArea.bottom  = p.y + pr.GetHeight();
+			ImmSetCandidateWindow(himc, &cf);
+		/*  // todo: SetCaretPos too
+			Rect r;
+			::CreateCaret(hwnd, NULL, 1, pr.Height());
+			::ShowCaret(hwnd);
+			::SetCaretPos(p.x, p.y);
+		*/	
 			auto ReadString = [&](int type) -> WString {
 				int len = ImmGetCompositionStringW (himc, type, NULL, 0);
 				if(len > 0) {
