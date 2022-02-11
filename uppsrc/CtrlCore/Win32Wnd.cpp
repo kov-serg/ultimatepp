@@ -489,6 +489,7 @@ void Ctrl::Create(HWND parent, DWORD style, DWORD exstyle, bool savebits, int sh
 	StateH(OPEN);
 	LLOG(LOG_END << "//Ctrl::Create in " <<UPP::Name(this));
 	RegisterDragDrop(top->hwnd, (LPDROPTARGET) (top->dndtgt = NewUDropTarget(this)));
+	::ImmAssociateContextEx(top->hwnd, NULL, 0);
 	CancelMode();
 	RefreshLayoutDeep();
 }
@@ -741,6 +742,20 @@ bool Ctrl::IsWaitingEvent()
 	return PeekMessage(&msg, NULL, 0, 0, PM_NOREMOVE);
 }
 
+void Ctrl::PreeditSync()
+{
+	PreeditSync(
+		[](Ctrl *top) {
+			if(HWND hwnd = top->GetHWND())
+			  ::ImmAssociateContextEx(hwnd, NULL, IACE_DEFAULT);
+		},
+		[](Ctrl *top) {
+			if(HWND hwnd = top->GetHWND())
+			  ::ImmAssociateContextEx(hwnd, NULL, 0);
+		}
+	);
+}
+
 bool Ctrl::ProcessEvent(bool *quit)
 {
 	ASSERT_(IsMainThread(), "ProcessEvent can only run in the main thread");
@@ -755,6 +770,7 @@ bool Ctrl::ProcessEvent(bool *quit)
 //		LLOG(GetSysTime() << " % " << (unsigned)msecs() % 10000 << ": //sProcessMSG " << FormatIntHex(msg.message));
 		DefferedFocusSync();
 		SyncCaret();
+		PreeditSync();
 		return true;
 	}
 	return false;

@@ -71,6 +71,12 @@ void Ctrl::SyncPreedit()
 		Rect r = GetPreeditScreenRect();
 		p.font = focusCtrl->GetPreeditFont();
 		r.right = r.left + GetTextSize(p.text, p.font).cx + DPI(4);
+		int wr = GetWorkArea().right;
+		if(r.right > wr) {
+			int w = r.GetWidth();
+			r.right = min(wr, r.left - DPI(2));
+			r.left = r.right - w;
+		}
 		p.SetRect(r);
 	}
 }
@@ -94,6 +100,19 @@ void Ctrl::HidePreedit()
 		p.Close();
 		p.owner = NULL;
 	}
+}
+
+void Ctrl::PreeditSync(void (*enable_preedit)(Ctrl *top), void (*disable_preedit)(Ctrl *top))
+{ // enables / disables preedit
+	static Ptr<Ctrl> preedit;
+	Ctrl *fw = focusCtrl && !IsNull(focusCtrl->GetPreedit()) ? focusCtrl->GetTopCtrl() : nullptr;
+	if(fw != preedit) {
+		if(preedit)
+			disable_preedit(preedit);
+		if(fw)
+			enable_preedit(fw);
+	}
+	preedit = fw;
 }
 
 };
