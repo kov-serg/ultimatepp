@@ -4,6 +4,8 @@
 
 	static gboolean GtkProc(GtkWidget *widget, GdkEvent *event, gpointer user_data);
 	static void     IMCommit(GtkIMContext *context, gchar *str, gpointer user_data);
+	static void     IMPreedit(GtkIMContext *context, gpointer user_data);
+	static void     IMPreeditEnd(GtkIMContext *context, gpointer user_data);
 
 	static int      DoButtonEvent(GdkEvent *event, bool press);
 	static void     AddEvent(gpointer user_data, int type, const Value& value, GdkEvent *event);

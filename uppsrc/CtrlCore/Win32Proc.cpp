@@ -430,10 +430,8 @@ LRESULT Ctrl::WindowProc(UINT message, WPARAM wParam, LPARAM lParam) {
 			HIMC himc = ImmGetContext(GetHWND());
 			if(!himc)
 				break;
-			RECT wr;
-			GetWindowRect(hwnd, &wr);
 			Rect pr = GetPreeditScreenRect();
-			Point p = pr.TopLeft() - /*Rect(wr)*/GetScreenRect().TopLeft();
+			Point p = pr.TopLeft() - GetScreenRect().TopLeft();
 			CANDIDATEFORM cf;
 			cf.dwIndex = 0;
 			cf.dwStyle = CFS_EXCLUDE;

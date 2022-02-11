@@ -288,7 +288,7 @@ void Ctrl::AddEvent(gpointer user_data, int type, const Value& value, GdkEvent *
 	e.count = 1;
 	e.event = NULL;
 #if GTK_CHECK_VERSION(3, 22, 0)
-	GdkDevice *d = gdk_event_get_source_device(event);
+	GdkDevice *d = event ? gdk_event_get_source_device(event) : NULL;
 	if(d && findarg(gdk_device_get_source(d), GDK_SOURCE_PEN, GDK_SOURCE_TOUCHSCREEN) >= 0) {
 		e.pen = true;
 		e.pen_barrel = MouseState & GDK_BUTTON3_MASK;
@@ -326,6 +326,40 @@ void Ctrl::IMCommit(GtkIMContext *context, gchar *str, gpointer user_data)
 {
 	GuiLock __;
 	AddEvent(user_data, EVENT_TEXT, ToUtf32(str), NULL);
+}
+
+void Ctrl::IMPreedit(GtkIMContext *context, gpointer user_data)
+{
+	GuiLock __;
+	Ctrl *w = GetTopCtrlFromId((uint32)(uintptr_t)user_data);
+	if(w && w->HasFocusDeep() && focusCtrl && !IsNull(focusCtrl->GetPreedit())) {
+		PangoAttrList *attrs;
+		gchar *str;
+		gint   cursor_pos;
+		gtk_im_context_get_preedit_string(context, &str, &attrs, &cursor_pos);
+		WString text = ToUtf32(str);
+		g_free(str);
+		pango_attr_list_unref(attrs);
+		w->ShowPreedit(text, cursor_pos);
+		GdkRectangle r;
+		Rect e = w->GetPreeditScreenRect();
+		Rect q = w->GetScreenRect();
+		GdkRectangle gr;
+		gr.x = LSC(e.left - q.left);
+		gr.y = LSC(e.top - q.top);
+		gr.width = LSC(e.GetWidth());
+		gr.height = LSC(e.GetHeight());
+//		gtk_im_context_set_cursor_location(context, GdkRect(w->GetPreeditScreenRect() - w->GetScreenRect().TopLeft()));
+		gtk_im_context_set_cursor_location(context, &gr);
+	}
+}
+
+void Ctrl::IMPreeditEnd(GtkIMContext *context, gpointer user_data)
+{
+	GuiLock __;
+	Ctrl *w = GetTopCtrlFromId((uint32)(uintptr_t)user_data);
+	if(w && w->HasFocusDeep() && focusCtrl && !IsNull(focusCtrl->GetPreedit()))
+		w->HidePreedit();
 }
 
 bool Ctrl::ProcessInvalids()

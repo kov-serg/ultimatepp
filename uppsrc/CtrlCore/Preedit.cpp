@@ -22,7 +22,7 @@ struct PreeditCtrl : Ctrl {
 };
 
 Rect Ctrl::GetPreeditScreenRect()
-{ // preedit position relative to window rect (client area in win32), zero width
+{ // preedit position in screen coordinates, zero width
 	if(HasFocusDeep()) {
 		Point p = focusCtrl->GetPreedit();
 		if(!IsNull(p)) {
