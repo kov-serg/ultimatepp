@@ -701,6 +701,8 @@ private:
 	static bool IsNoLayoutZoom;
 	static void Csizeinit();
 	static void (*skin)();
+	
+	static void (*cancel_preedit)();
 
 	friend void  InitRichTextZoom();
 	friend void  AvoidPaintingCheck__();
@@ -1131,6 +1133,8 @@ public:
 	void    SetCaret(const Rect& r);
 	Rect    GetCaret() const;
 	void    KillCaret();
+	
+	static void  CancelPreedit();
 
 	static Ctrl *GetFocusCtrl()                { return FocusCtrl(); }
 

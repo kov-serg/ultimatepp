@@ -121,7 +121,7 @@ _DBG_
 	static void StopGrabPopup();
 	static void StartGrabPopup();
 	static bool ReleaseWndCapture0();
-	       void CancelPreedit();
+	static void DoCancelPreedit();
 	
 	static Rect frameMargins;
 	static Rect GetFrameMargins();

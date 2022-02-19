@@ -4,6 +4,14 @@
 
 namespace Upp {
 
+void (*Ctrl::cancel_preedit)(); // hook for implementation to hide cancel host preedit
+
+void Ctrl::CancelPreedit()
+{
+	if(cancel_preedit)
+		cancel_preedit();
+}
+
 struct PreeditCtrl : Ctrl {
 	WString text;
 	Font    font;

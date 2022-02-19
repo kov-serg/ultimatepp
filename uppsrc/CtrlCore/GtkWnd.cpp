@@ -396,14 +396,16 @@ bool Ctrl::SetWndFocus()
 	return true;
 }
 
-void Ctrl::CancelPreedit()
+void Ctrl::DoCancelPreedit()
 {
-	if(top)
-		HidePreedit();
-	if(top) {
-		gtk_im_context_reset(top->im_context);
-		gtk_im_context_focus_out(top->im_context);
-		gtk_im_context_focus_in(top->im_context);
+	if(!focusCtrl)
+		return;
+	if(focusCtrl->top)
+		focusCtrl->HidePreedit();
+	if(focusCtrl->top) {
+		gtk_im_context_reset(focusCtrl->top->im_context);
+		gtk_im_context_focus_out(focusCtrl->top->im_context);
+		gtk_im_context_focus_in(focusCtrl->top->im_context);
 	}
 }
 

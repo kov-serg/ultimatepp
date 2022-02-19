@@ -363,6 +363,8 @@ void Ctrl::IMPreedit(GtkIMContext *context, gpointer user_data)
 		w->ShowPreedit(text, cursor_pos);
 		IMLocation(w);
 	}
+	else
+		CancelPreedit();
 }
 
 void Ctrl::IMPreeditEnd(GtkIMContext *context, gpointer user_data)
@@ -800,6 +802,9 @@ void WakeUpGuiThread()
 void Ctrl::EventLoop(Ctrl *ctrl)
 {
 	GuiLock __;
+
+	cancel_preedit = DoCancelPreedit; // We really need this just once, but whatever..
+
 	ASSERT_(IsMainThread(), "EventLoop can only run in the main thread");
 	ASSERT(LoopLevel == 0 || ctrl);
 	LoopLevel++;
