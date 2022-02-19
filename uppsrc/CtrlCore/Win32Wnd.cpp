@@ -742,20 +742,6 @@ bool Ctrl::IsWaitingEvent()
 	return PeekMessage(&msg, NULL, 0, 0, PM_NOREMOVE);
 }
 
-void Ctrl::PreeditSync()
-{
-	PreeditSync(
-		[](Ctrl *top) {
-			if(HWND hwnd = top->GetHWND())
-			  ::ImmAssociateContextEx(hwnd, NULL, IACE_DEFAULT);
-		},
-		[](Ctrl *top) {
-			if(HWND hwnd = top->GetHWND())
-			  ::ImmAssociateContextEx(hwnd, NULL, 0);
-		}
-	);
-}
-
 bool Ctrl::ProcessEvent(bool *quit)
 {
 	ASSERT_(IsMainThread(), "ProcessEvent can only run in the main thread");
@@ -770,7 +756,10 @@ bool Ctrl::ProcessEvent(bool *quit)
 //		LLOG(GetSysTime() << " % " << (unsigned)msecs() % 10000 << ": //sProcessMSG " << FormatIntHex(msg.message));
 		DefferedFocusSync();
 		SyncCaret();
-		PreeditSync();
+		PreeditSync([](Ctrl *top, bool enable) {
+			if(HWND hwnd = top->GetHWND())
+			  ::ImmAssociateContextEx(hwnd, NULL, enable * IACE_DEFAULT);
+		});
 		return true;
 	}
 	return false;

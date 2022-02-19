@@ -18,7 +18,7 @@ void Ctrl::Create(Ctrl *owner, bool popup)
 	top = new Top;
 	top->window = gtk_window_new(popup && owner ? GTK_WINDOW_POPUP : GTK_WINDOW_TOPLEVEL);
 	top->owner = owner;
-	
+
 	static int id;
 	top->id = ++id;
 
@@ -57,7 +57,7 @@ void Ctrl::Create(Ctrl *owner, bool popup)
 	gtk_window_resize(gtk(), LSC(r.GetWidth()), LSC(r.GetHeight()));
 
 	gtk_widget_realize(top->window);
-	
+
 	w.gdk = gtk_widget_get_window(top->window);
 
 	if(owner && owner->top)
@@ -75,16 +75,16 @@ void Ctrl::Create(Ctrl *owner, bool popup)
 	g_signal_connect(top->im_context, "commit", G_CALLBACK(IMCommit), (gpointer)(uintptr_t)top->id);
 
 	WndShow(IsShown());
-	
+
 	SweepConfigure(true);
 	FocusSync();
 	if(!popup)
 		SetWndFocus();
 
 	activeCtrl = this;
-	
+
 	DndInit();
-	
+
 	StateH(OPEN);
 
 	GdkModifierType mod;
@@ -92,7 +92,7 @@ void Ctrl::Create(Ctrl *owner, bool popup)
 	r = GetWndScreenRect().GetSize();
 	if(r.Contains(m))
 		DispatchMouse(MOUSEMOVE, m);
-	
+
 	RefreshLayoutDeep();
 }
 
@@ -111,7 +111,8 @@ void Ctrl::WndDestroy()
 		if(HasFocusDeep() || !GetFocusCtrl())
 			activeCtrl = owner;
 	}
-	g_object_unref(top->im_context);
+	if(top->im_context)
+		g_object_unref(top->im_context);
 	gtk_widget_destroy(top->window);
 	isopen = false;
 	popup = false;

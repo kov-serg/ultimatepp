@@ -83,6 +83,10 @@ void Ctrl::SyncPreedit()
 
 void Ctrl::ShowPreedit(const WString& text, int cursor)
 {
+	if(text.GetCount() == 0) {
+		HidePreedit();
+		return;
+	}
 	PreeditCtrl& p = Single<PreeditCtrl>();
 	p.text = text;
 	p.cursor = cursor;
@@ -102,15 +106,15 @@ void Ctrl::HidePreedit()
 	}
 }
 
-void Ctrl::PreeditSync(void (*enable_preedit)(Ctrl *top), void (*disable_preedit)(Ctrl *top))
+void Ctrl::PreeditSync(void (*enable_preedit)(Ctrl *top, bool enable))
 { // enables / disables preedit
 	static Ptr<Ctrl> preedit;
 	Ctrl *fw = focusCtrl && !IsNull(focusCtrl->GetPreedit()) ? focusCtrl->GetTopCtrl() : nullptr;
 	if(fw != preedit) {
 		if(preedit)
-			disable_preedit(preedit);
+			enable_preedit(preedit, false);
 		if(fw)
-			enable_preedit(fw);
+			enable_preedit(fw, true);
 	}
 	preedit = fw;
 }

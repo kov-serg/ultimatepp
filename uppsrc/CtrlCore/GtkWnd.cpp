@@ -396,6 +396,17 @@ bool Ctrl::SetWndFocus()
 	return true;
 }
 
+void Ctrl::CancelPreedit()
+{
+	if(top)
+		HidePreedit();
+	if(top) {
+		gtk_im_context_reset(top->im_context);
+		gtk_im_context_focus_out(top->im_context);
+		gtk_im_context_focus_in(top->im_context);
+	}
+}
+
 void WakeUpGuiThread();
 
 void Ctrl::WndInvalidateRect(const Rect& r)

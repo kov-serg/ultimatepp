@@ -130,8 +130,10 @@ gboolean Ctrl::GtkEvent(GtkWidget *widget, GdkEvent *event, gpointer user_data)
 
 	switch(event->type) {
 	case GDK_DELETE:
+		p->CancelPreedit();
 		break;
 	case GDK_FOCUS_CHANGE:
+		p->CancelPreedit();
 		if(p) {
 			if(((GdkEventFocus *)event)->in)
 				gtk_im_context_focus_in(p->top->im_context);
@@ -144,16 +146,19 @@ gboolean Ctrl::GtkEvent(GtkWidget *widget, GdkEvent *event, gpointer user_data)
 	case GDK_LEAVE_NOTIFY:
 		break;
 	case GDK_BUTTON_PRESS:
+		p->CancelPreedit();
 		value = DoButtonEvent(event, true);
 		if(IsNull(value))
 			return false;
 		break;
 	case GDK_2BUTTON_PRESS:
+		p->CancelPreedit();
 		value = DoButtonEvent(event, true);
 		if(IsNull(value))
 			return false;
 		break;
 	case GDK_BUTTON_RELEASE:
+		p->CancelPreedit();
 		value = DoButtonEvent(event, false);
 		if(IsNull(value))
 			return false;
@@ -328,6 +333,21 @@ void Ctrl::IMCommit(GtkIMContext *context, gchar *str, gpointer user_data)
 	AddEvent(user_data, EVENT_TEXT, ToUtf32(str), NULL);
 }
 
+void Ctrl::IMLocation(Ctrl *w)
+{
+	if(w && w->HasFocusDeep() && focusCtrl && !IsNull(focusCtrl->GetPreedit())) {
+		GdkRectangle r;
+		Rect e = w->GetPreeditScreenRect();
+		Rect q = w->GetScreenRect();
+		GdkRectangle gr;
+		gr.x = LSC(e.left - q.left);
+		gr.y = LSC(e.top - q.top);
+		gr.width = LSC(e.GetWidth());
+		gr.height = LSC(e.GetHeight());
+		gtk_im_context_set_cursor_location(w->top->im_context, &gr);
+	}
+}
+
 void Ctrl::IMPreedit(GtkIMContext *context, gpointer user_data)
 {
 	GuiLock __;
@@ -341,16 +361,7 @@ void Ctrl::IMPreedit(GtkIMContext *context, gpointer user_data)
 		g_free(str);
 		pango_attr_list_unref(attrs);
 		w->ShowPreedit(text, cursor_pos);
-		GdkRectangle r;
-		Rect e = w->GetPreeditScreenRect();
-		Rect q = w->GetScreenRect();
-		GdkRectangle gr;
-		gr.x = LSC(e.left - q.left);
-		gr.y = LSC(e.top - q.top);
-		gr.width = LSC(e.GetWidth());
-		gr.height = LSC(e.GetHeight());
-//		gtk_im_context_set_cursor_location(context, GdkRect(w->GetPreeditScreenRect() - w->GetScreenRect().TopLeft()));
-		gtk_im_context_set_cursor_location(context, &gr);
+		IMLocation(w);
 	}
 }
 
@@ -401,7 +412,7 @@ bool Ctrl::IsWaitingEvent()
 struct ProcStop {
 	TimeStop tm;
 	String   ev;
-	
+
 	~ProcStop() { LOG("* " << ev << " elapsed " << tm); }
 };
 
@@ -473,7 +484,7 @@ void Ctrl::Proc()
 	pen.pressure = CurrentEvent.pen_pressure;
 	pen.rotation = CurrentEvent.pen_rotation;
 	pen.tilt = CurrentEvent.pen_tilt;
-	
+
 	is_pen_event = CurrentEvent.pen;
 
 	auto DoPen = [&](Point p) {
@@ -486,7 +497,7 @@ void Ctrl::Proc()
 		}
 		else
 			for(Ctrl *t = q; t; t=q->ChildFromPoint(p)) q = t;
-		
+
 		q->Pen(p, pen, GetMouseFlags());
 		SyncCaret();
 		Image m = CursorOverride();
@@ -498,7 +509,7 @@ void Ctrl::Proc()
 	   findarg(CurrentEvent.type, GDK_MOTION_NOTIFY, GDK_BUTTON_PRESS, GDK_BUTTON_RELEASE) >= 0)
 	{
 		pen.action = decode(CurrentEvent.type, GDK_BUTTON_PRESS, PEN_DOWN, GDK_BUTTON_RELEASE, PEN_UP, 0);
-		
+
 		DoPen(GetMousePos() - GetScreenRect().TopLeft());
 	}
 #endif
@@ -524,7 +535,7 @@ void Ctrl::Proc()
 			ignoreclick = false;
 			ignoremouseup = false;
 		}
-		
+
 		if(!ignoreclick) {
 			bool dbl = msecs(clicktime) < 250;
 			clicktime = dbl ? clicktime - 1000 : msecs();
@@ -643,7 +654,7 @@ void Ctrl::Proc()
 				kv |= K_CTRL;
 			if(GetAlt() && kv != K_ALT_KEY)
 				kv |= K_ALT;
-			LLOG(GetKeyDesc(kv) << ", pressed: " << pressed << ", count: " << CurrentEvent.count);
+			DLOG(GetKeyDesc(kv) << ", pressed: " << pressed << ", count: " << CurrentEvent.count);
 #ifdef GDK_WINDOWING_X11
 			if(pressed)
 				for(int i = 0; i < hotkey.GetCount(); i++) {
@@ -653,6 +664,7 @@ void Ctrl::Proc()
 					}
 				}
 #endif
+			DDUMPHEX(kv);
 			DispatchKey(!pressed * K_KEYUP + kv, CurrentEvent.count);
 		}
 		break;
@@ -727,8 +739,10 @@ bool Ctrl::ProcessEvent0(bool *quit, bool fetch)
 		Ctrl *w = GetTopCtrlFromId(e.windowid);
 		FocusSync();
 		CaptureSync();
-		if(w)
+		if(w) {
+			IMLocation(w);
 			w->Proc();
+		}
 		r = true;
 	}
 	if(quit)
