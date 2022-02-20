@@ -64,12 +64,29 @@ Point GetMousePos() {
 
 bool PassWindowsKey(int wParam);
 
+void Ctrl::DoCancelPreedit()
+{
+	if(!focusCtrlWnd)
+		return;
+	if(focusCtrlWnd->top)
+		focusCtrl->HidePreedit();
+	if(focusCtrlWnd->top && focusCtrlWnd->top->hwnd) {
+		HIMC himc = ImmGetContext(focusCtrlWnd->top->hwnd);
+		if(himc && ImmGetOpenStatus(himc)) {
+			ImmNotifyIME(himc, NI_COMPOSITIONSTR, CPS_CANCEL, 0);
+			ImmReleaseContext(focusCtrlWnd->top->hwnd, himc);
+		}
+	}
+}
+
 LRESULT Ctrl::WindowProc(UINT message, WPARAM wParam, LPARAM lParam) {
 	GuiLock __;
 	eventid++;
 //	LLOG("Ctrl::WindowProc(" << message << ") in " << ::Name(this) << ", focus " << (void *)::GetFocus());
 	Ptr<Ctrl> _this = this;
 	HWND hwnd = GetHWND();
+
+	cancel_preedit = DoCancelPreedit; // We really need this just once, but whatever..
 
 	is_pen_event = (GetMessageExtraInfo() & 0xFFFFFF00) == 0xFF515700;
 	
@@ -88,11 +105,8 @@ LRESULT Ctrl::WindowProc(UINT message, WPARAM wParam, LPARAM lParam) {
 
 	auto StopPreedit = [&] {
 		HidePreedit();
-		HIMC himc = ImmGetContext (hwnd);
-		if(himc && ImmGetOpenStatus(himc)) {
-			ImmNotifyIME(himc, NI_COMPOSITIONSTR, CPS_CANCEL, 0);
-			ImmReleaseContext (hwnd, himc);
-		}
+		if(HasFocusDeep())
+			CancelPreedit();
 	};
 	
 	auto ClickActivate = [&] {
@@ -425,6 +439,7 @@ LRESULT Ctrl::WindowProc(UINT message, WPARAM wParam, LPARAM lParam) {
 		break;
 //	case WM_GETDLGCODE:
 //		return wantfocus ? 0 : DLGC_STATIC;
+    case WM_IME_STARTCOMPOSITION:
 	case WM_IME_COMPOSITION:
 		if(has_preedit) {
 			HIMC himc = ImmGetContext(GetHWND());
@@ -471,10 +486,6 @@ LRESULT Ctrl::WindowProc(UINT message, WPARAM wParam, LPARAM lParam) {
 			return 0L;
 		}
 		break;
-    case WM_IME_STARTCOMPOSITION:
-        if(has_preedit)
-            return 0L;
-        break;
 	case WM_IME_ENDCOMPOSITION:
 		if(has_preedit) {
 			HidePreedit();

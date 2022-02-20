@@ -8,6 +8,7 @@ void (*Ctrl::cancel_preedit)(); // hook for implementation to hide cancel host p
 
 void Ctrl::CancelPreedit()
 {
+	HidePreedit();
 	if(cancel_preedit)
 		cancel_preedit();
 }

@@ -645,7 +645,7 @@ private:
 	Rect    GetPreeditScreenRect();
 	void    SyncPreedit();
 	void    ShowPreedit(const WString& text, int cursor = INT_MAX);
-	void    HidePreedit();
+	static void HidePreedit();
 	static void PreeditSync(void (*enable_preedit)(Ctrl *top, bool enable));
 
 // System window interface...
@@ -1135,6 +1135,8 @@ public:
 	void    KillCaret();
 	
 	static void  CancelPreedit();
+	
+	void   CancelMyPreedit()                   { if(HasFocus()) CancelPreedit(); }
 
 	static Ctrl *GetFocusCtrl()                { return FocusCtrl(); }
 
