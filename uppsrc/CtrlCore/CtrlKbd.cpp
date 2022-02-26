@@ -306,6 +306,7 @@ void Ctrl::KillFocusWnd()
 		focusCtrl = focusCtrlWnd = NULL;
 		DoKillFocus(pfocusCtrl, NULL);
 	}
+	CancelPreedit();
 }
 
 void Ctrl::ClickActivateWnd()
