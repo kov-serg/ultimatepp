@@ -1345,7 +1345,8 @@ LZ4_stream_t* LZ4_createStream(void)
                      while actually aligning LZ4_stream_t on 4 bytes. */
 static size_t LZ4_stream_t_alignment(void)
 {
-    struct { char c; LZ4_stream_t t; } t_a;
+    //struct { char c; LZ4_stream_t t; } t_a;
+    struct { char c; int* t; } t_a;
     return sizeof(t_a) - sizeof(t_a.t);
 }
 #endif
